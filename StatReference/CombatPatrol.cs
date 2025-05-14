@@ -10,8 +10,8 @@ namespace WH40k.StatReference.CombatPatrol
             {
                 Name = "Double Armiger",
                 Units = new List<Unit>{
-                    Test.HelverinSquad(),
-                    Test.HelverinSquad(),
+                    StatReference.Imperium.ImperialKnightsUnits.HelverinSquad(),
+                    Imperium.ImperialKnightsUnits.HelverinSquad(),
                 }
             };
         }

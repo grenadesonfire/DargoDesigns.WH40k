@@ -7,7 +7,7 @@ public class Simulator
 
     Random rand = new Random((int)DateTime.Now.Ticks);
 
-    public static void RunArmySImulation(
+    public static void RunArmySimulation(
         int numSimulations, 
         ArmyList primary, ArmyList secondary, 
         Action<IEnumerable<Stats>> postSimulation)
@@ -22,6 +22,12 @@ public class Simulator
         //  Should take in attacker and defender
         //  wounded units should not fight nor be targeted for attacks  
         throw new NotImplementedException();
+    }
+
+    public static void SimulateBattle(ArmyList attacker, ArmyList defender) {
+        //TODO: come up with a way to determine best attack.
+        //Default will be toughness * wounds * models i.e. biggest blob
+        
     }
 
     public static void StaticRunSimulation(int simulations, Unit attacker, Unit defender, Action<IEnumerable<Stats>> postSimulation)
@@ -173,7 +179,7 @@ public class Simulator
         var wounds = 0;
         foreach (var weapon in atk.RangedWeapons)
         {
-            wounds += SimulateWeaponAttack(weapon, atk.BoardModels.Count(), def);
+            wounds += SimulateWeaponAttack(atk, weapon, atk.BoardModels.Count(), def);
         }
         return wounds;
     }
@@ -195,20 +201,22 @@ public class Simulator
         var wounds = 0;
         var weapon = atk.MeleeWeapons.First();
 
-        wounds += SimulateWeaponAttack(weapon, atk.BoardModels.Count(), def);
+        wounds += SimulateWeaponAttack(atk, weapon, atk.BoardModels.Where(bm => !bm.Destroyed).Count(), def);
 
         return wounds;
     }
 
-    int SimulateWeaponAttack(WeaponReference weapon, int attackers, Unit def)
+    int SimulateWeaponAttack(ModelGroup mg, WeaponReference weapon, int attackers, Unit def)
     {
         var weakestSaveRef = def.Models.OrderBy(m => m.Ref.Toughness).First();
 
         var chance = 1.0m;
 
         //Check for hit
-        chance *= (6 - weapon.Skill + 1);
-        chance /= 6;
+        var hitRoll = 6 - weapon.Skill + 1.0m;
+
+        //TODO: split hit and wound rolls here, need to check sustained hits
+        var rolledHits = RollHits(mg, hitRoll, weapon, attackers);
 
         //Check for wound
         chance *= TenthEdWoundChance(weapon.Strength, weakestSaveRef.Ref.Toughness);
@@ -222,8 +230,7 @@ public class Simulator
         //FNP ignored for now
         var damageInstances = new List<int>();
         ///var allModels = //def.Models.Sum(m => m.BoardModels.Count(bm => !bm.Destroyed));
-        var totalAttacks = CalculateAttacks(weapon.Attacks, attackers);
-        for (var attacks = 0; attacks < totalAttacks; attacks++)
+        for (var attacks = 0; attacks < rolledHits; attacks++)
         {
             var roll = rand.Next(100);
             var beat = (1 - chance) * 100;
@@ -233,7 +240,7 @@ public class Simulator
             }
         }
 
-        var wounds = 0;
+        var woundsDealt = 0;
 
         foreach (var dInst in damageInstances)
         {
@@ -241,22 +248,48 @@ public class Simulator
             var unitToHit = def.Models.SelectMany(m => m.BoardModels.Where(bm => !bm.Destroyed)).OrderBy(bm => bm.WoundsRemaining).FirstOrDefault(bm => !bm.Destroyed);
             if (unitToHit == null) continue;
 
+            var dmgDone = Math.Min(dInst, unitToHit.WoundsRemaining);
             unitToHit.WoundsRemaining -= dInst;
             if (unitToHit.WoundsRemaining <= 0) unitToHit.Destroyed = true;
-            wounds += dInst;
+            woundsDealt += dmgDone;
         }
 
-        return wounds;
+        return woundsDealt;
     }
 
-    private int CalculateAttacks(string attacks, int attackers)
+    private int RollHits(ModelGroup attackerGroup, decimal hitToBeat, WeaponReference weapon, int numAttackers)
     {
-        if (int.TryParse(attacks, out int simpleAttack))
+        var attacks = CalculateAttacks(weapon.Attacks, numAttackers);
+        var hits = 0;
+
+        for(var rollAttempts=0;rollAttempts<=attacks;rollAttempts++){
+            var dieRoll = RollDie();
+
+            if(attackerGroup.Ref.SustainedHitsRanged.HasValue && weapon.Range > 0){
+                if(dieRoll >= attackerGroup.Ref.SustainedHitsRanged) {
+                    hits += weapon.SustainedHitsBonus!.Value;
+                }
+            }
+            // 
+            // else if(weapon.SustainedHits.HasValue){
+                
+            // }
+            if(dieRoll >= weapon.Skill) {
+                hits++;
+            }
+        }
+
+        return hits;
+    }
+
+    private int CalculateAttacks(string attackDescriptor, int attackers)
+    {
+        if (int.TryParse(attackDescriptor, out int simpleAttack))
         {
             return simpleAttack * attackers;
         }
 
-        var breakdown = attacks.Split('+');
+        var breakdown = attackDescriptor.Split('+');
         var min = 0;
         if (breakdown.Length > 1)
         {
@@ -266,15 +299,23 @@ public class Simulator
         var numD6 = int.Parse(breakdown[0].Split(['D', 'd'])[0]);
         var attackNo = 0;
 
+        // Every attacker in a model group uses same profile
         for (var atker = 0; atker < attackers; atker++)
         {
             for (var dice = 0; dice < numD6; dice++)
             {
-                attackNo += rand.Next(6) + 1;
+                attackNo += RollDie();
             }
+
+            attackNo+=min;
         }
 
-        return min;
+        return attackNo;
+    }
+
+    private int RollDie()
+    {
+        return rand.Next(5)+1;
     }
 
     /// <summary>

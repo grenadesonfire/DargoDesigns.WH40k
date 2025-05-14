@@ -40,31 +40,4 @@ public class Test {
 			}
 		};
 	}
-	
-	
-	
-	public static Unit HelverinSquad() {
-		var mg = new ModelGroup
-		{
-			MeleeWeapons = new List<WeaponReference>() {
-				new WeaponReference(-1, "4", 3, 6, 0, 1, "Stomp")	
-			},
-			RangedWeapons = new List<WeaponReference>() {
-				new WeaponReference(48,"4",3,9,-1,3, "Autocannon"), //Autocannon
-				new WeaponReference(48,"4",3,9,-1,3, "Autocannon"),
-				new WeaponReference(12,"1",3,9,-4, 6, "Melta") // damage should be d6 not 6 and has melta 2 keyword
-			},
-			Ref = new ModelReference(12,10,3,12,7,8){
-				InvulnerableSave = 5
-			},
-		};
-		
-		mg.SpawnBoardModels(1);
-		
-		return new Unit{
-			Models = new List<ModelGroup>(){
-				mg
-			}
-		};
-	}
 }

@@ -75,8 +75,13 @@ public class ModelReference : DataReference {
 	
 	public int? InvulnerableSave { get; set; }
 	public int? FeelNoPain { get; set; }
-	
-	public ModelReference() { }
+
+	/// <summary>
+	/// The number that needs to be hit to trigger sustained hits, normally a 6 if it exists
+	/// </summary>
+    public int? SustainedHitsRanged { get; internal set; }
+
+    public ModelReference() { }
 	
 	public ModelReference(
 		int mov,
@@ -107,13 +112,21 @@ public class WeaponReference : DataReference {
 		int damage,
 		string name)
 	{
-		Range = range;
-		Attacks = attacks;
-		Skill = skill;
-		Strength = strength;
-		ArmorPenetration = armorpen;
-		Damage = damage;
-		Name = name;
+		initialize(range, attacks,skill,strength,armorpen,damage,name);
+	}
+
+	public WeaponReference(
+		int range, 
+		string attacks, 
+		int skill, 
+		int strength,
+		int armorpen, 
+		int damage,
+		string name,
+		int sustainedHitsBonus)
+	{
+		initialize(range, attacks,skill,strength,armorpen,damage,name);
+		SustainedHitsBonus = sustainedHitsBonus;
 	}
 
 	/// <summary>
@@ -128,4 +141,27 @@ public class WeaponReference : DataReference {
 	public int Strength { get; set; }
 	public int ArmorPenetration { get; set; }
 	public int Damage { get; set; }
+
+	/// <summary>
+	/// If sustained hits is triggered then this is the number of additional hits scored.
+	/// </summary>
+	public int? SustainedHitsBonus { get; set; }
+
+	private void initialize(
+		int range, 
+		string attacks, 
+		int skill, 
+		int strength,
+		int armorpen, 
+		int damage,
+		string name) {
+
+		Range = range;
+		Attacks = attacks;
+		Skill = skill;
+		Strength = strength;
+		ArmorPenetration = armorpen;
+		Damage = damage;
+		Name = name;
+	}
 }
